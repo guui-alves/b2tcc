@@ -1,0 +1,6 @@
+.idea/
+venv/
+venv/*
+b2tcc/development_instance/users_media
+b2tcc/development_instance/dev_b2tcc.db
+b2tcc/production_instance/b2tcc.db
