@@ -4,7 +4,7 @@ import zipfile
 import tempfile
 import shutil
 import _thread
-from b2tcc.app.facial_recognition import train_recognition, user_recognized
+from b2tcc.recognizer.facial_recognizer import train_recognition, user_recognized
 
 from flask import request, Blueprint, jsonify, session, current_app
 from werkzeug.utils import secure_filename

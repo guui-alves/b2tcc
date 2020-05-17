@@ -3,17 +3,19 @@ import cv2
 from flask import current_app
 import numpy
 
-DEFAULT_MEDIA_FOLDER = current_app.config['DEFAULT_MEDIA_FOLDER']
-BASE_FILES = {f: os.listdir(os.path.join(DEFAULT_MEDIA_FOLDER, f)) for f in os.listdir(DEFAULT_MEDIA_FOLDER)}
-
 
 def train_recognition(folder_path):
+    default_media_folder = current_app.config['DEFAULT_MEDIA_FOLDER']
+    base_files = {f: os.listdir(os.path.join(default_media_folder, f)) for f in os.listdir(default_media_folder)}
     eigenface = cv2.face.EigenFaceRecognizer_create(num_components=10, threshold=8000)
-    images = BASE_FILES.update({os.path.basename(folder_path): [os.path.join(folder_path, f) for f in os.listdir(folder_path)]})
-    ids = images.keys()
+    images = base_files.update(
+        {os.path.basename(folder_path): [os.path.join(folder_path, f) for f in os.listdir(folder_path)]})
+    ids = list()
     faces = list()
-    for image in [j for i in images.values() for j in i]:
-        faces.append(cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2GRAY))
+    for index in images:
+        for image in images[index]:
+            ids.append(index)
+            faces.append(cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2GRAY))
     eigenface.train(faces, numpy.array(ids))
     user_recognition_file = os.path.join(folder_path, 'classificadoEing.yml')
     eigenface.write(user_recognition_file)
