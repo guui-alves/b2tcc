@@ -4,6 +4,7 @@ import zipfile
 import tempfile
 import shutil
 import _thread
+import distutils.dir_util as dir_util
 from b2tcc.recognizer.facial_recognizer import train_recognition, user_recognized
 
 from flask import request, Blueprint, jsonify, session, current_app
@@ -70,25 +71,26 @@ def logout():
     session.pop('user_id', None)
     return jsonify({
         'message': 'Bye bye!'
-    }), 204
+    }), 205
 
 
 @users_blueprint.route("/user", methods=["PUT", "POST"])
 def user():
     users_table = get_table('users')
     id = session.get('user_id', None)
-    if not id:
+    user = next(users_table.find(id=id), None)
+    if not id or not user:
+        session.pop('user_id', None)
         return jsonify({
             'message': 'Please login'
         }), 401
-    user = next(users_table.find(id=id), None)
-    if not user:
-        return jsonify({
-            'message': 'User id not found'
-        }), 400
 
     if request.method == "PUT":
         media_folder = os.path.join(current_app.config['MEDIA_ROOT'], str(id))
+        pictures_folder = os.path.join(media_folder, 'pictures')
+        files_folder = os.path.join(media_folder, 'files')
+        dir_util.mkpath(pictures_folder)
+        dir_util.mkpath(files_folder)
         zip = request.files.get('pictures')
         if zip:
             temp_folder = tempfile.mkdtemp()
@@ -98,21 +100,20 @@ def user():
             for image in os.listdir(temp_folder):
                 filename = secure_filename(image)
                 while True:
-                    path = os.path.join(media_folder, f'{index}_{filename}')
-                    if os.path.exists(path):
+                    file_path = os.path.join(pictures_folder, f'{index}_{filename}')
+                    if os.path.exists(file_path):
                         index += 1
                     else:
                         break
-                if not os.path.exists(media_folder):
-                    os.mkdir(media_folder)
-                shutil.copy2(os.path.join(temp_folder, image), path)
+                shutil.copy2(os.path.join(temp_folder, image), file_path)
                 pictures = user.get('pictures', None)
                 data = dict(id=id, pictures=f'{pictures};{index}_{filename}' if pictures else f'{index}_{filename}')
                 users_table.update(data, ['id'])
             if os.path.exists(temp_folder):
                 shutil.rmtree(temp_folder)
             _thread.start_new_thread(
-                users_table.update(dict(id=id, user_recognition_file=train_recognition(media_folder)), ['id']))
+                users_table.update,
+                (dict(id=id, user_recognition_file=train_recognition(pictures_folder, files_folder)), ['id']))
             return jsonify({
                 'message': 'Picture saved'
             }), 200
@@ -129,7 +130,7 @@ def user():
 
         image = request.files.get('image')
 
-        if user_recognized(image,recognition_file, id):
+        if user_recognized(image, recognition_file, id):
             return jsonify({
                 'message': 'OK'
             }), 202
