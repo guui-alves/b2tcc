@@ -111,9 +111,10 @@ def user():
                 users_table.update(data, ['id'])
             if os.path.exists(temp_folder):
                 shutil.rmtree(temp_folder)
-            _thread.start_new_thread(
-                users_table.update,
-                (dict(id=id, user_recognition_file=train_recognition(pictures_folder, files_folder)), ['id']))
+            users_table.update(dict(id=id, user_recognition_file=os.path.join(files_folder, 'EigenParameters.yml')),
+                               ['id'])
+            _thread.start_new_thread(train_recognition,
+                                     (current_app.config['DEFAULT_MEDIA_FOLDER'], pictures_folder, files_folder))
             return jsonify({
                 'message': 'Picture saved'
             }), 200
@@ -129,12 +130,17 @@ def user():
             }), 400
 
         image = request.files.get('image')
-
-        if user_recognized(image, recognition_file, id):
+        temp_folder = tempfile.mkdtemp()
+        image_path = os.path.join(temp_folder, "x")
+        image.save(image_path)
+        if user_recognized(image_path, recognition_file, id):
+            shutil.rmtree(temp_folder)
             return jsonify({
                 'message': 'OK'
             }), 202
         else:
+            shutil.rmtree(temp_folder)
             return jsonify({
                 'message': 'Not OK'
             }), 401
+
