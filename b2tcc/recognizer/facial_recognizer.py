@@ -1,7 +1,6 @@
 import os
 import cv2
 import numpy
-from flask import current_app
 
 WIDTH, HEIGHT = 220, 220
 FACES_DETECTOR = cv2.CascadeClassifier(
