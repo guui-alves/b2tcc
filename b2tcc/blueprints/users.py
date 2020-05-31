@@ -99,7 +99,16 @@ def train():
     users_table = get_table('users')
 
     user_id = session.get('user_id', None)
-    user_pictures = request.files.get('pictures')
+    if not user_id:
+        return jsonify({
+            'message': 'Login required'
+        }), 401
+
+    user_pictures = request.files.get('pictures', None)
+    if not user_pictures:
+        return jsonify({
+            'message': 'No pictures received'
+        }), 400
 
     pictures_folder = os.path.join(current_app.config['MEDIA_ROOT'], str(user_id), 'pictures')
     files_folder = os.path.join(current_app.config['MEDIA_ROOT'], str(user_id), 'files')
@@ -133,7 +142,7 @@ def train():
     except Exception:
         return jsonify({
             'message': 'Train failed'
-        }), 201
+        }), 500
 
 
 @users_blueprint.route("/logout", methods=["GET"])
