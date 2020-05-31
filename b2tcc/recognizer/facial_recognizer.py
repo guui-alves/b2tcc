@@ -1,34 +1,26 @@
 import os
 import cv2
 import numpy
+from flask import current_app
 
 WIDTH, HEIGHT = 220, 220
 FACES_DETECTOR = cv2.CascadeClassifier(
     os.path.join(os.path.abspath(os.path.dirname(__file__)), "face_original.xml"))
 
 
-def train_recognition(default_media_folder, pictures_folder, files_folder):
-    images = {index: os.listdir(os.path.join(default_media_folder, index)) for index in
-              os.listdir(default_media_folder)}
-    for index, value in images.items():
-        images[index] = [os.path.join(default_media_folder, index, file) for file in value]
-    images.update(
-        {os.path.basename(os.path.dirname(pictures_folder)): [os.path.join(pictures_folder, f) for f in
-                                                              os.listdir(pictures_folder)]})
-
+def train_recognition(user_id, pictures_folder, file_folder):
     eigenface = cv2.face.EigenFaceRecognizer_create(num_components=10, threshold=8000)
     ids = list()
     faces = list()
-    for index in images:
-        for image in images[index]:
-            gray_image = cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2GRAY)
-            face = FACES_DETECTOR.detectMultiScale(gray_image)
-            for (x, y, w, h) in face:
-                ids.append(int(index))
-                faces.append(cv2.resize(gray_image[y:y + h, x:x + w], (WIDTH, HEIGHT)))
+    for image in os.listdir(pictures_folder):
+        gray_image = cv2.cvtColor(cv2.imread(os.path.join(pictures_folder, image)), cv2.COLOR_BGR2GRAY)
+        face = FACES_DETECTOR.detectMultiScale(gray_image)
+        for (x, y, w, h) in face:
+            ids.append(int(user_id))
+            faces.append(cv2.resize(gray_image[y:y + h, x:x + w], (WIDTH, HEIGHT)))
 
     eigenface.train(faces, numpy.array(ids))
-    user_recognition_file = os.path.join(files_folder, 'EigenParameters.yml')
+    user_recognition_file = os.path.join(file_folder, 'EigenParameters.yml')
     eigenface.write(user_recognition_file)
     return user_recognition_file
 
