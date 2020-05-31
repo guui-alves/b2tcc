@@ -24,7 +24,7 @@ def train_recognition(user_id, pictures_folder, file_folder):
     return user_recognition_file
 
 
-def user_recognized(image, recognition_file, user_id):
+def face_recognizer(image, recognition_file, user_id):
     recognizer = cv2.face.EigenFaceRecognizer_create()
     recognizer.read(recognition_file)
     picture = cv2.cvtColor(cv2.imread(image), cv2.COLOR_BGR2GRAY)

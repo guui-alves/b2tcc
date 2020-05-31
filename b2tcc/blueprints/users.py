@@ -4,7 +4,7 @@ import zipfile
 import tempfile
 import shutil
 import distutils.dir_util as dir_util
-from b2tcc.recognizer.facial_recognizer import train_recognition, user_recognized
+from b2tcc.recognizer.facial_recognizer import train_recognition, face_recognizer
 
 from flask import request, Blueprint, jsonify, session, current_app
 from werkzeug.utils import secure_filename
@@ -67,7 +67,7 @@ def login():
         temp_folder = tempfile.mkdtemp()
         image_path = os.path.join(temp_folder, picture.filename)
         picture.save(image_path)
-        is_user_recognized = user_recognized(image_path, recognition_file, user.get('id'))
+        is_user_recognized = face_recognizer(image_path, recognition_file, user.get('id'))
         shutil.rmtree(temp_folder)
         if is_user_recognized:
             session['user_id'] = user.get('id')
