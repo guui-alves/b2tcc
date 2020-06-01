@@ -11,12 +11,15 @@ from werkzeug.utils import secure_filename
 
 from b2tcc.db import get_table
 
+from cryptography.fernet import Fernet
+
 users_blueprint = Blueprint('users', __name__)
 
 
 @users_blueprint.route("/register", methods=["POST"])
 def register():
     users_table = get_table('users')
+    cipher = Fernet(current_app.config['SECRET_KEY'])
     form_data = request.form.to_dict() or json.loads(request.data)
     phone_number = form_data.get('phone_number', '')
     password = form_data.get('password', '')
@@ -31,10 +34,9 @@ def register():
         }), 409
     try:
         user_id = users_table.insert(dict(phone_number=phone_number, password=password))
-        session['user_id'] = user_id
         return jsonify({
             'message': 'OK',
-            'id': user_id
+            'SessionId': cipher.encrypt(str(user_id).encode()).decode()
         }), 201
     except Exception:
         return jsonify({
@@ -45,6 +47,7 @@ def register():
 @users_blueprint.route("/login", methods=["POST"])
 def login():
     users_table = get_table('users')
+    cipher = Fernet(current_app.config['SECRET_KEY'])
     form_data = request.form.to_dict() or json.loads(request.data)
     phone_number = form_data.get('phone_number', None)
     password = form_data.get('password', None)
@@ -71,10 +74,9 @@ def login():
         is_user_recognized = face_recognizer(image_path, recognition_file, user.get('id'))
         shutil.rmtree(temp_folder)
         if is_user_recognized:
-            session['user_id'] = user.get('id')
             return jsonify({
                 'message': 'OK',
-                'id': user.get('id')
+                'SessionId': cipher.encrypt(str(user.get('id')).encode()).decode()
             }), 202
         else:
             return jsonify({
@@ -82,10 +84,9 @@ def login():
             }), 403
     elif password:
         if user.get('password') == password:
-            session['user_id'] = user.get('id')
             return jsonify({
                 'message': 'OK',
-                'id': user.get('id')
+                'SessionId': cipher.encrypt(str(user.get('id')).encode()).decode()
             }), 202
         else:
             return jsonify({
@@ -97,16 +98,16 @@ def login():
         }), 400
 
 
-@users_blueprint.route("/train", methods=["POST"])
-def train():
+@users_blueprint.route("/train/<user_id>", methods=["POST"])
+def train(user_id):
     users_table = get_table('users')
-    form_data = request.form.to_dict() or json.loads(request.data)
+    cipher = Fernet(current_app.config['SECRET_KEY'])
+    user_id = cipher.decrypt(str(user_id).encode()).decode()
 
-    user_id = session.get('user_id', None) or form_data.get('id')
-    if not user_id:
+    if not next(users_table.find(id=user_id), None):
         return jsonify({
-            'message': 'Login required'
-        }), 401
+            'message': 'You are busted! asshole!'
+        }), 403
 
     user_pictures = request.files.get('pictures', None)
     if not user_pictures:
@@ -114,8 +115,8 @@ def train():
             'message': 'No pictures received'
         }), 400
 
-    pictures_folder = os.path.join(current_app.config['MEDIA_ROOT'], str(user_id), 'pictures')
-    files_folder = os.path.join(current_app.config['MEDIA_ROOT'], str(user_id), 'files')
+    pictures_folder = os.path.join(current_app.config['MEDIA_ROOT'], user_id, 'pictures')
+    files_folder = os.path.join(current_app.config['MEDIA_ROOT'], user_id, 'files')
     dir_util.mkpath(pictures_folder)
     dir_util.mkpath(files_folder)
     temp_folder = tempfile.mkdtemp()
@@ -147,11 +148,3 @@ def train():
         return jsonify({
             'message': 'Train failed'
         }), 500
-
-
-@users_blueprint.route("/logout", methods=["GET"])
-def logout():
-    session.pop('user_id', None)
-    return jsonify({
-        'message': 'Bye bye!'
-    }), 205
