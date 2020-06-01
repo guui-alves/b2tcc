@@ -33,7 +33,8 @@ def register():
         user_id = users_table.insert(dict(phone_number=phone_number, password=password))
         session['user_id'] = user_id
         return jsonify({
-            'message': 'OK'
+            'message': 'OK',
+            'id': user_id
         }), 201
     except Exception:
         return jsonify({
@@ -72,7 +73,8 @@ def login():
         if is_user_recognized:
             session['user_id'] = user.get('id')
             return jsonify({
-                'message': 'OK'
+                'message': 'OK',
+                'id': user.get('id')
             }), 202
         else:
             return jsonify({
@@ -82,7 +84,8 @@ def login():
         if user.get('password') == password:
             session['user_id'] = user.get('id')
             return jsonify({
-                'message': 'OK'
+                'message': 'OK',
+                'id': user.get('id')
             }), 202
         else:
             return jsonify({
@@ -97,8 +100,9 @@ def login():
 @users_blueprint.route("/train", methods=["POST"])
 def train():
     users_table = get_table('users')
+    form_data = request.form.to_dict() or json.loads(request.data)
 
-    user_id = session.get('user_id', None)
+    user_id = session.get('user_id', None) or form_data.get('id')
     if not user_id:
         return jsonify({
             'message': 'Login required'
